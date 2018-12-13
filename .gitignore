@@ -14,3 +14,4 @@ tmp
 /.settings
 /.cache-main
 /.cache-tests
+conf/app-production.conf
