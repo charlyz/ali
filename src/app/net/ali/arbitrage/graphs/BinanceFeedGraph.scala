@@ -20,18 +20,17 @@ import com.google.inject.name.Named
 import akka.stream.Materializer
 
 @Singleton
-class CoinbaseFeedGraph @Inject()(
+class BinanceFeedGraph @Inject()(
   config: AliConfiguration,
-  @Named("coinbase-feed-flow") coinbaseFeedFlow: Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]],
-  @Named("coinbase-subscribe-source") cointbaseSubscribeSource: Source[Message, Promise[Option[Message]]],
+  @Named("binance-feed-flow") binanceFeedFlow: Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]],
   implicit val ec: ExecutionContext,
   implicit val actorSystem: ActorSystem,
   implicit val mat: Materializer
 ) {
 
-  val (upgradeResponse, closed) = cointbaseSubscribeSource
-    .viaMat(coinbaseFeedFlow)(Keep.right) 
-    .toMat(Sink.foreach(x => println("coinbase: " + x)))(Keep.both) 
+  val (upgradeResponse, closed) = Source.maybe[Message]
+    .viaMat(binanceFeedFlow)(Keep.right) 
+    .toMat(Sink.foreach(x => println("binance: " + x)))(Keep.both) 
     .run()
     
   val connected = upgradeResponse.flatMap { upgrade =>
@@ -43,6 +42,6 @@ class CoinbaseFeedGraph @Inject()(
   }
 
   connected.onComplete(println)
-  closed.onComplete { x => println("stream is done for coinbase " + x) }
+  closed.onComplete { x => println("stream is done for binance " + x) }
   
 }

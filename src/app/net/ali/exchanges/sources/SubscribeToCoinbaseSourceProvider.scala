@@ -14,7 +14,7 @@ import com.google.inject.Provider
 import akka.http.scaladsl.model.Uri.apply
 
 @Singleton
-class SubscribeToCoinbaseAndWaitSourceProvider @Inject()(
+class SubscribeToCoinbaseSourceProvider @Inject()(
   config: AliConfiguration,
   implicit val ec: ExecutionContext,
   implicit val actorSystem: ActorSystem
@@ -23,18 +23,16 @@ class SubscribeToCoinbaseAndWaitSourceProvider @Inject()(
   val subscribePayload = s"""
     |{
     |  "type": "subscribe",
+    |  "product_ids": [
+    |    "${config.LeftPair}-${config.RightPair}"
+    |  ],
     |  "channels": [
     |    "heartbeat",
-    |    {
-    |        "name": "ticker",
-    |        "product_ids": [
-    |            "${config.LeftPair}-${config.RightPair}",
-    |        ]
-    |    }
+    |    "ticker"
     |  ]
     |}
     """.stripMargin
-  
+
   val subscribeAndWaitSource = Source(List(TextMessage(subscribePayload))).concatMat(Source.maybe[Message])(Keep.right)
   
   override def get(): Source[Message, Promise[Option[Message]]] = subscribeAndWaitSource

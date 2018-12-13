@@ -1,7 +1,6 @@
-package net.ali
+package net.ali.json
 
 import net.ali.RichImplicits.RichString
-
 import play.api.libs.json.Format
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsResult

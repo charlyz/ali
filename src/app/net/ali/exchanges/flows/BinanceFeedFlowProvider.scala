@@ -30,43 +30,23 @@ import com.google.inject.Provider
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
 
 @Singleton
-class CoinbaseFeedFlowProvider @Inject()(
+class BinanceFeedFlowProvider @Inject()(
   config: AliConfiguration,
   implicit val ec: ExecutionContext,
   implicit val actorSystem: ActorSystem
 ) extends Provider[Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]]] {
   
-  implicit val priceTickReads = priceTickReadsFromCoinbase
-  
-  @volatile var lastPriceTickOpt: Option[PriceTick] = None
-  
+  implicit val priceTickReads = priceTickReadsFromBinance
+
   val webSocketFlow = Http()
-    .webSocketClientFlow(WebSocketRequest(config.Coinbase.WebSocketURL))
+    .webSocketClientFlow(WebSocketRequest(s"${config.Binance.WebSocketURL}/ws/ltcbtc@ticker"))
     .map { 
       case TextMessage.Strict(payloadAsString) =>
         val payloadAsJson = Json.parse(payloadAsString)
 
-        (payloadAsJson \ "type").asOpt[String] match {
-          case Some("ticker") => 
-            payloadAsJson.validate[PriceTick] match {
-              case JsSuccess(priceTick, _) => 
-                lastPriceTickOpt = Some(priceTick)
-                lastPriceTickOpt
-              case JsError(e) => throw new Exception(s"Payload could not be parsed: $e")
-            }
-          case Some("heartbeat") => 
-             (payloadAsJson \ "time").asOpt[DateTime](jodaDateReadsForMicroSeconds) match {
-               case Some(heartbeatTime) => 
-                 lastPriceTickOpt match {
-                   case Some(lastPriceTick) => 
-                     lastPriceTickOpt = Some(lastPriceTick.copy(asOf = heartbeatTime))
-                     lastPriceTickOpt
-                   case _ => None
-                 }
-               case _ => throw new Exception(s"Heartbeat time could not be found: $payloadAsString")
-             }
-          case Some("subscriptions") => None
-          case _ => throw new Exception(s"Unexpected event: $payloadAsString")
+        payloadAsJson.validate[PriceTick] match {
+          case JsSuccess(priceTick, _) => Some(priceTick)
+          case JsError(e) => throw new Exception(s"Payload could not be parsed: $e")
         }
       case _ => None
     }
