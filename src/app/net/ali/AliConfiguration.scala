@@ -15,6 +15,7 @@ class AliConfiguration @Inject()(config: Configuration) {
   val LeftPair = "LTC"
   val RightPair = "BTC"
   val PriceTickExpiration = 5.seconds
+  val CoinSize = 0.1
   
   class CoinbaseInnerConfig {
     val TakerFee: Double = 0.003

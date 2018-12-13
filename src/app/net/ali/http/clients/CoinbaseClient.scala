@@ -32,30 +32,113 @@ class CoinbaseClient @Inject()(
   implicit val ec: ExecutionContext,
   implicit val mat: Materializer
 ) extends HttpClient {
+  
+  val decodedSecret = Base64.getDecoder.decode(config.Coinbase.SecretKey)
+  val mac = Mac.getInstance("HmacSHA256")
+  mac.init(new SecretKeySpec(decodedSecret, "HmacSHA256"))
+  
+  def createLimitBuyOrder(price: Double) = {
+    val body = s"""
+      | {
+      |   "size": "${config.CoinSize}",
+      |   "price": "$price",
+      |   "side": "buy",
+      |   "type": "limit",
+      |   "post_only": true,
+      |   "product_id": "${config.LeftPair}-${config.RightPair}"
+      | }
+      """.stripMargin
 
+    createOrder(Json.stringify(Json.parse(body)))
+  }
+  
+  def createMarketBuyOrder() = {
+    val body = s"""
+      | {
+      |   "size": "${config.CoinSize}",
+      |   "side": "buy",
+      |   "type": "market",
+      |   "product_id": "${config.LeftPair}-${config.RightPair}"
+      | }
+      """.stripMargin
+
+    createOrder(Json.stringify(Json.parse(body)))
+  }
+  
+  def createMarketSellOrder() = {
+    val body = s"""
+      | {
+      |   "size": "${config.CoinSize}",
+      |   "side": "sell",
+      |   "type": "market",
+      |   "product_id": "${config.LeftPair}-${config.RightPair}"
+      | }
+      """.stripMargin
+
+    createOrder(Json.stringify(Json.parse(body)))
+  }
+  
+  def createOrder(body: String): Future[Unit] = {
+    val path = "/orders"
+    val url = s"https://${config.Coinbase.ApiHostname}$path"
+    val timestamp = DateTime.now.getMillis / 1000
+    val message = timestamp + "POST" + path + body
+
+    Try {
+      Base64.getEncoder.encodeToString(mac.doFinal(message.getBytes()))
+    } match {
+      case Success(signature) => 
+        val headers = Seq(
+          "CB-ACCESS-KEY" -> config.Coinbase.PublicKey,
+          "CB-ACCESS-SIGN" -> signature,
+          "CB-ACCESS-TIMESTAMP" -> timestamp.toString,
+          "CB-ACCESS-PASSPHRASE"  -> config.Coinbase.Passphrase,
+          "Content-Type" -> "application/json"
+        )
+    
+        val responseFuture = ws
+          .url(url)
+          .withRequestTimeout(config.Coinbase.HttpRequestTimeout)
+          .addHttpHeaders(headers: _*)
+          .post(body)
+    
+        logSendingRequestInfo(url, "POST", Some(headers), paramsOpt = None, Some(body))
+        val t0 = System.nanoTime()
+    
+        responseFuture.onSuccess {
+          case response =>
+            logReceivingResponseInfo(
+              url,
+              "POST",
+              Some(headers),
+              paramsOpt = None,
+              t0,
+              t1 = System.nanoTime(),
+              response.status,
+              Some(response.body.length),
+              Some(response.body)
+            )
+        }
+    
+        responseFuture
+          .map { response =>
+            if (response.status != 200) {
+              throw new Exception(s"Order could not be created: ${response.body}")
+            } else {
+              ()
+            }
+          }
+      case Failure(e) => Future.failed(e)
+    }
+  }
+  
   def getAccounts: Future[String] = {
     val path = "/accounts"
-    val url = s"http://${config.Coinbase.ApiHostname}$path"
+    val url = s"https://${config.Coinbase.ApiHostname}$path"
     val timestamp = DateTime.now.getMillis / 1000
     val message = timestamp + "GET" + path
-    /*
-     * 
-     * String prehash = timestamp + method.toUpperCase() + requestPath + body;
-        byte[] secretDecoded = Base64.decode(secretKey, Base64.DEFAULT);
 
-        SecretKeySpec keyspec = new SecretKeySpec(secretDecoded, "HmacSHA256");
-        Mac sha256 = GDAXConstants.SHARED_MAC;
-        sha256.init(keyspec);
-        String shadone = Base64.encodeToString(sha256.doFinal(prehash.getBytes()),Base64.DEFAULT);
-        return shadone;
-     */
     Try {
-      /*val mac = Mac.getInstance("HmacSHA256")
-      mac.init(new SecretKeySpec(config.Coinbase.SecretKey.getBytes, "HmacSHA256"))
-      new String(Hex.encodeHex(mac.doFinal(message.getBytes())))*/
-      val decodedSecret = Base64.getDecoder.decode(config.Coinbase.SecretKey)
-      val mac = Mac.getInstance("HmacSHA256")
-      mac.init(new SecretKeySpec(decodedSecret, "HmacSHA256"))
       Base64.getEncoder.encodeToString(mac.doFinal(message.getBytes()))
     } match {
       case Success(signature) => 

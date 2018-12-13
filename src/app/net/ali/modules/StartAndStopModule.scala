@@ -30,5 +30,7 @@ class StartAndStopHook @Inject()(
   implicit val ec: ExecutionContext,
   implicit val mat: Materializer
 ) {
-  coinbaseClient.getAccounts
+  //coinbaseClient.createLimitBuyOrder(0.001)
+  //coinbaseClient.createMarketBuyOrder()
+  coinbaseClient.createMarketSellOrder()
 }
