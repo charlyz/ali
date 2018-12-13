@@ -15,6 +15,7 @@ import akka.actor.ActorSystem
 import akka.Done
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
+import net.ali.http.clients._
 import akka.stream.scaladsl._
 import net.ali.exchanges.sources._
 import akka.http.scaladsl.model.ws._
@@ -38,6 +39,7 @@ class AllBindingsModule(
 
   override def configure(): Unit = { 
     bind(classOf[AliConfiguration])
+    bind(classOf[CoinbaseClient])
     
     bind(new TypeLiteral[Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]]]() {})
       .annotatedWith(Names.named("coinbase-feed-flow"))

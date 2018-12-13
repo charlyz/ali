@@ -4,7 +4,7 @@ import scala.concurrent.ExecutionContext
 
 import com.google.inject.AbstractModule
 import com.google.inject.Singleton
-
+import net.ali.http.clients._
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import javax.inject.Inject
@@ -24,10 +24,11 @@ class StartAndStopModule extends AbstractModule {
 // eagerly to start any asynchronous service.
 @Singleton
 class StartAndStopHook @Inject()(
+  coinbaseClient: CoinbaseClient,
   lifecycle: ApplicationLifecycle,
   implicit val actorSystem: ActorSystem,
   implicit val ec: ExecutionContext,
   implicit val mat: Materializer
 ) {
-  
+  coinbaseClient.getAccounts
 }

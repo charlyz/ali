@@ -19,6 +19,11 @@ class AliConfiguration @Inject()(config: Configuration) {
   class CoinbaseInnerConfig {
     val TakerFee: Double = 0.003
     val WebSocketURL = config.get[String]("ali.coinbase.web-socket-url")
+    val SecretKey = config.get[String]("ali.coinbase.secret-key")
+    val PublicKey = config.get[String]("ali.coinbase.public-key")
+    val Passphrase = config.get[String]("ali.coinbase.passphrase")
+    val HttpRequestTimeout = 10.seconds
+    val ApiHostname = config.get[String]("ali.coinbase.api-hostname")
   }
   val Coinbase = new CoinbaseInnerConfig
   
