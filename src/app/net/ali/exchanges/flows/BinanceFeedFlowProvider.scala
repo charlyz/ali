@@ -25,18 +25,19 @@ import akka.http.scaladsl.model.ws._
 import akka.stream.scaladsl.Flow
 import scala.concurrent._
 import net.ali.json.JodaDateFormat.jodaDateReadsForMicroSeconds
-import net.ali.json.PriceTickReads._
+import net.ali.json.PriceTickReads
 import com.google.inject.Provider
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
 
 @Singleton
 class BinanceFeedFlowProvider @Inject()(
   config: AliConfiguration,
+  priceTickReads: PriceTickReads,
   implicit val ec: ExecutionContext,
   implicit val actorSystem: ActorSystem
 ) extends Provider[Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]]] {
   
-  implicit val priceTickReads = priceTickReadsFromBinance
+  implicit val priceTickReadsFromBinance = priceTickReads.priceTickReadsFromBinance
 
   val webSocketFlow = Http()
     .webSocketClientFlow(WebSocketRequest(s"${config.Binance.WebSocketURL}/ws/ltcbtc@ticker"))

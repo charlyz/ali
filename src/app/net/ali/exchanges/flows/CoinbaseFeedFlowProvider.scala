@@ -25,18 +25,19 @@ import akka.http.scaladsl.model.ws._
 import akka.stream.scaladsl.Flow
 import scala.concurrent._
 import net.ali.json.JodaDateFormat.jodaDateReadsForMicroSeconds
-import net.ali.json.PriceTickReads._
+import net.ali.json.PriceTickReads
 import com.google.inject.Provider
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
 
 @Singleton
 class CoinbaseFeedFlowProvider @Inject()(
   config: AliConfiguration,
+  priceTickReads: PriceTickReads,
   implicit val ec: ExecutionContext,
   implicit val actorSystem: ActorSystem
 ) extends Provider[Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]]] {
   
-  implicit val priceTickReads = priceTickReadsFromCoinbase
+  implicit val priceTickReadsFromCoinbase = priceTickReads.priceTickReadsFromCoinbase
   
   @volatile var lastPriceTickOpt: Option[PriceTick] = None
   

@@ -23,13 +23,13 @@ import akka.stream.Materializer
 class CoinbaseFeedGraph @Inject()(
   config: AliConfiguration,
   @Named("coinbase-feed-flow") coinbaseFeedFlow: Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]],
-  @Named("coinbase-subscribe-source") cointbaseSubscribeSource: Source[Message, Promise[Option[Message]]],
+  @Named("coinbase-subscribe-source") coinbaseSubscribeSource: Source[Message, Promise[Option[Message]]],
   implicit val ec: ExecutionContext,
   implicit val actorSystem: ActorSystem,
   implicit val mat: Materializer
 ) {
 
-  val (upgradeResponse, closed) = cointbaseSubscribeSource
+  val (upgradeResponse, closed) = coinbaseSubscribeSource
     .viaMat(coinbaseFeedFlow)(Keep.right) 
     .toMat(Sink.foreach(x => println("coinbase: " + x)))(Keep.both) 
     .run()

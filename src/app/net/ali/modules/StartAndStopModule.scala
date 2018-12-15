@@ -25,6 +25,7 @@ class StartAndStopModule extends AbstractModule {
 @Singleton
 class StartAndStopHook @Inject()(
   coinbaseClient: CoinbaseClient,
+  binanceClient: BinanceClient,
   lifecycle: ApplicationLifecycle,
   implicit val actorSystem: ActorSystem,
   implicit val ec: ExecutionContext,
@@ -32,5 +33,6 @@ class StartAndStopHook @Inject()(
 ) {
   //coinbaseClient.createLimitBuyOrder(0.001)
   //coinbaseClient.createMarketBuyOrder()
-  coinbaseClient.createMarketSellOrder()
+  //coinbaseClient.createMarketSellOrder()
+  binanceClient.createMarketBuyOrder()
 }

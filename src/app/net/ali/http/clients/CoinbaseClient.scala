@@ -40,7 +40,7 @@ class CoinbaseClient @Inject()(
   def createLimitBuyOrder(price: Double) = {
     val body = s"""
       | {
-      |   "size": "${config.CoinSize}",
+      |   "size": "${config.CoinsQuantity}",
       |   "price": "$price",
       |   "side": "buy",
       |   "type": "limit",
@@ -55,7 +55,7 @@ class CoinbaseClient @Inject()(
   def createMarketBuyOrder() = {
     val body = s"""
       | {
-      |   "size": "${config.CoinSize}",
+      |   "size": "${config.CoinsQuantity}",
       |   "side": "buy",
       |   "type": "market",
       |   "product_id": "${config.LeftPair}-${config.RightPair}"
@@ -68,7 +68,7 @@ class CoinbaseClient @Inject()(
   def createMarketSellOrder() = {
     val body = s"""
       | {
-      |   "size": "${config.CoinSize}",
+      |   "size": "${config.CoinsQuantity}",
       |   "side": "sell",
       |   "type": "market",
       |   "product_id": "${config.LeftPair}-${config.RightPair}"
