@@ -28,7 +28,7 @@ import play.api.libs.ws.WSClient
 import java.util.Base64
 
 @Singleton
-class BinanceClient @Inject()(
+class BitfinexClient @Inject()(
   config: AliConfiguration,
   ws: WSClient,
   implicit val actorSystem: ActorSystem,
@@ -36,57 +36,64 @@ class BinanceClient @Inject()(
   implicit val mat: Materializer
 ) extends HttpClient {
   
-  val mac = Mac.getInstance("HmacSHA256")
-  mac.init(new SecretKeySpec(config.Binance.SecretKey.getBytes, "HmacSHA256"))
+  val mac = Mac.getInstance("HmacSHA384")
+  mac.init(new SecretKeySpec(config.Bitfinex.SecretKey.getBytes, "HmacSHA384"))
   
   def createMarketBuyOrder() = {
-    createOrder(
-      side = "BUY",
-      orderType = "MARKET"
-    )
+    val body = s"""
+      |{
+      |  "request": "/v1/order/new",
+      |  "nonce": "${DateTime.now.getMillis}",
+      |  "symbol": "${config.LeftPair}${config.RightPair}",
+      |  "amount": "${config.CoinsQuantity}",
+      |  "price": "0.0000001",
+      |  "exchange": "bitfinex",
+      |  "side": "buy",
+      |  "type": "market"
+      |}
+      """.stripMargin
+
+    createOrder(Json.stringify(Json.parse(body)))
   }
   
   def createMarketSellOrder() = {
-    createOrder(
-      side = "SELL",
-      orderType = "MARKET"
-    )
+    val body = s"""
+      |{
+      |  "request": "/v1/order/new",
+      |  "nonce": "${DateTime.now.getMillis}",
+      |  "symbol": "${config.LeftPair}${config.RightPair}",
+      |  "amount": "${config.CoinsQuantity}",
+      |  "price": "100000000",
+      |  "exchange": "bitfinex",
+      |  "side": "sell",
+      |  "type": "market"
+      |}
+      """.stripMargin
+
+    createOrder(Json.stringify(Json.parse(body)))
   }
   
-  def createOrder(side: String, orderType: String): Future[Unit] = {
-    val path = "/api/v3/order"
-    val url = s"https://${config.Binance.ApiHostname}$path"
+  def createOrder(body: String): Future[Unit] = {
+    val path = "/v1/order/new"
+    val url = s"https://${config.Bitfinex.ApiHostname}$path"
     val timestamp = DateTime.now.getMillis
     
-    val paramsWithoutSignature = Seq(
-      "symbol" -> s"${config.LeftPair}${config.RightPair}",
-      "side" -> side,
-      "type" -> orderType,
-      "quantity" -> config.CoinsQuantity.toString,
-      "recvWindow" -> "5000",
-      "timestamp" -> timestamp.toString
-    )
-    
-    val paramsWithoutSignatureAsString = paramsWithoutSignature
-      .map { case (paramName, value) =>
-        s"$paramName=$value"
-      }
-      .mkString("&")
+    val payload = Base64.getEncoder.encodeToString(body.getBytes)
 
     Try {
-      new String(Hex.encodeHex(mac.doFinal(paramsWithoutSignatureAsString.getBytes())))
+      new String(Hex.encodeHex(mac.doFinal(payload.getBytes)))
     } match {
       case Success(signature) => 
         val headers = Seq(
-          "X-MBX-APIKEY" -> config.Binance.PublicKey,
+          "X-BFX-APIKEY" -> config.Bitfinex.PublicKey,
+          "X-BFX-PAYLOAD" -> payload,
+          "X-BFX-SIGNATURE" -> signature,
           "content-type" -> "application/data"
         )
-        
-        val body = s"$paramsWithoutSignatureAsString&signature=$signature"
 
         val responseFuture = ws
           .url(url)
-          .withRequestTimeout(config.Binance.HttpRequestTimeout)
+          .withRequestTimeout(config.Bitfinex.HttpRequestTimeout)
           .addHttpHeaders(headers: _*)
           .post(body)
     

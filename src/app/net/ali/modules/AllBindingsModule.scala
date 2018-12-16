@@ -44,6 +44,7 @@ class AllBindingsModule(
     bind(classOf[PriceTickReads])
     bind(classOf[CoinbaseClient])
     bind(classOf[BinanceClient])
+    bind(classOf[BitfinexClient])
     
     bind(new TypeLiteral[Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]]]() {})
       .annotatedWith(Names.named("coinbase-feed-flow"))
@@ -64,8 +65,17 @@ class AllBindingsModule(
     bind(new TypeLiteral[Flow[(PriceTick, PriceTick), ArbitrageOrder, NotUsed]]() {})
       .annotatedWith(Names.named("check-price-ticks-flow"))
       .toProvider(classOf[CheckPriceTicksFlowProvider])
+    
+    bind(new TypeLiteral[Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]]]() {})
+      .annotatedWith(Names.named("bitfinex-feed-flow"))
+      .toProvider(classOf[BitfinexFeedFlowProvider])
       
-    bind(classOf[ArbitrageGraph])
+    bind(new TypeLiteral[Source[Message, Promise[Option[Message]]]]() {})
+      .annotatedWith(Names.named("bitfinex-subscribe-source"))
+      .toProvider(classOf[SubscribeToBitfinexSourceProvider])  
+    
+    bind(classOf[BitfinexFeedGraph])
+    //bind(classOf[ArbitrageGraph])
   }
   
 }

@@ -33,8 +33,11 @@ class ArbitrageGraph @Inject()(
   @Named("coinbase-subscribe-source") coinbaseSubscribeSource: Source[Message, Promise[Option[Message]]],
   @Named("binance-feed-flow") binanceFeedFlow: Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]],
   @Named("check-price-ticks-flow") checkPriceTicksFlow: Flow[(PriceTick, PriceTick), ArbitrageOrder, NotUsed],
+  @Named("bitfinex-feed-flow") bitfinexFeedFlow: Flow[Message, PriceTick, Future[WebSocketUpgradeResponse]],
+  @Named("bitfinex-subscribe-source") bitfinexSubscribeSource: Source[Message, Promise[Option[Message]]],
   coinbaseClient: CoinbaseClient,
   binanceClient: BinanceClient,
+  bitfinexClient: BitfinexClient,
   implicit val ec: ExecutionContext,
   implicit val actorSystem: ActorSystem,
   implicit val mat: Materializer
@@ -44,25 +47,17 @@ class ArbitrageGraph @Inject()(
   
   val throttleAndDiscardExcessFlow = Flow[PriceTick]
     .buffer(1, OverflowStrategy.dropBuffer)
-    .throttleEven(3, 1.second, ThrottleMode.Shaping)
+    .throttle(3, 1.second, maximumBurst = 1, ThrottleMode.Shaping)
     
   val throttleAndCreateOrders = Flow[ArbitrageOrder]
     .buffer(1, OverflowStrategy.dropBuffer)
-    .throttleEven(config.MaxOrdersPerMinute, 1.minute, ThrottleMode.Shaping)
+    .throttle(config.MaxOrdersPerMinute, 1.minute, maximumBurst = 1, ThrottleMode.Shaping)
     .mapAsync(1) { 
-      case ArbitrageOrder("coinbase", "binance") =>
-        Logger.info("Buying on coinbase and selling on binance.")
-        val buyOrderFuture = coinbaseClient.createMarketBuyOrder()
-        val sellOrderFuture = binanceClient.createMarketSellOrder()
+      case ArbitrageOrder(buyingExchange, buyingHttpClient, sellingExchange, sellingHttpClient) =>
+        Logger.info(s"Buying on $buyingExchange and selling on $sellingExchange.")
+        val buyOrderFuture = buyingHttpClient.createMarketBuyOrder()
+        val sellOrderFuture = sellingHttpClient.createMarketSellOrder()
         buyOrderFuture.flatMap(_ => sellOrderFuture)
-      case ArbitrageOrder("binance", "coinbase") =>
-        Logger.info("Buying on binance and selling on coinbase.")
-        val buyOrderFuture = binanceClient.createMarketBuyOrder()
-        val sellOrderFuture = coinbaseClient.createMarketSellOrder()
-        buyOrderFuture.flatMap(_ => sellOrderFuture)
-      case arbitrageOrder => 
-        throw new Exception(s"Order could not be created due to unexpected exchange names: $arbitrageOrder")
-      
     }
    
   val binanceFeedSource = Source
@@ -72,12 +67,18 @@ class ArbitrageGraph @Inject()(
   val coinbaseFeedSource = coinbaseSubscribeSource
     .viaMat(coinbaseFeedFlow)(Keep.right)
     .via(throttleAndDiscardExcessFlow)
+  val bitfinexFeedSource = bitfinexSubscribeSource
+    .viaMat(bitfinexFeedFlow)(Keep.right)
+    .via(throttleAndDiscardExcessFlow)
   
   val ((binanceConnectionFuture, coinbaseConnectionFuture), _) = coinbaseFeedSource
     .zipMat(binanceFeedSource)(Keep.both)
     .viaMat(checkPriceTicksFlow)(Keep.both)
+    .viaMat(throttleAndCreateOrders)(Keep.left)
     .toMat(printingSink)(Keep.left)
     .run()
+    
+    
     
   binanceConnectionFuture
     .flatMap { upgrade =>

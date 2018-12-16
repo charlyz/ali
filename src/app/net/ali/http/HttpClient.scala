@@ -2,11 +2,14 @@ package net.ali.http
 
 import scala.concurrent.duration.Duration
 import scala.language.reflectiveCalls
-
+import scala.concurrent._
 import play.api.Logger
 
 trait HttpClient {
-
+  
+  def createMarketBuyOrder(): Future[Unit]
+  def createMarketSellOrder(): Future[Unit]
+  
   def logSendingRequestInfo(
     url: String,
     method: String,

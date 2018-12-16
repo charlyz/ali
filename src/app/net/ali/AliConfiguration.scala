@@ -16,7 +16,7 @@ class AliConfiguration @Inject()(config: Configuration) {
   val RightPair = "BTC"
   val PriceTickExpiration = 5.seconds
   val CoinsQuantity = 0.2
-  val ProfitThresholdComparedToFees = 2 // Profits must be X times bigger than the total fees.
+  val ProfitThresholdComparedToFees = 1 // Profits must be X times bigger than the total fees.
   val MaxOrdersPerMinute = 1
   
   class CoinbaseInnerConfig {
@@ -39,5 +39,15 @@ class AliConfiguration @Inject()(config: Configuration) {
     val HttpRequestTimeout = 10.seconds
   }
   val Binance = new BinanceInnerConfig
+  
+  class BitfinexInnerConfig {
+    val TakerFee: Double = 0.002
+    val WebSocketURL = config.get[String]("ali.bitfinex.web-socket-url")
+    val SecretKey = config.get[String]("ali.bitfinex.secret-key")
+    val PublicKey = config.get[String]("ali.bitfinex.public-key")
+    val ApiHostname = config.get[String]("ali.bitfinex.api-hostname")
+    val HttpRequestTimeout = 10.seconds
+  }
+  val Bitfinex = new BitfinexInnerConfig
   
 }

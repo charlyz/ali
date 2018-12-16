@@ -86,10 +86,24 @@ class CheckPriceTicksFlowProvider @Inject()(
         
         if (netProfitWhenBuyingFromA > config.ProfitThresholdComparedToFees * totalFeesWhenBuyingFromA) {
           Logger.info(s"PROFITABLE TO BUY ON ${priceTickA.exchange} - $priceTickA - $priceTickB")
-          Some(ArbitrageOrder("", ""))
+          Some(
+            ArbitrageOrder(
+              buyingExchange = priceTickA.exchange, 
+              buyingHttpClient = priceTickA.httpClient,
+              sellingExchange = priceTickB.exchange,
+              sellingHttpClient = priceTickB.httpClient
+            )
+          )
         } else if (netProfitWhenBuyingFromB > config.ProfitThresholdComparedToFees * totalFeesWhenBuyingFromB) {
           Logger.info(s"PROFITABLE TO BUY ON ${priceTickB.exchange} - $priceTickA - $priceTickB")
-          Some(ArbitrageOrder("", ""))
+          Some(
+            ArbitrageOrder(
+              buyingExchange = priceTickB.exchange, 
+              buyingHttpClient = priceTickB.httpClient,
+              sellingExchange = priceTickA.exchange,
+              sellingHttpClient = priceTickA.httpClient
+            )
+          )
         } else {
           Logger.info(s"NOT PROFITABLE - $priceTickA - $priceTickB")
           None

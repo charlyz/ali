@@ -11,30 +11,26 @@ import akka.http.scaladsl.model.ws._
 import akka.stream.scaladsl.Flow
 import scala.concurrent._
 import com.google.inject.Provider
+import akka.NotUsed
 import akka.http.scaladsl.model.Uri.apply
 
 @Singleton
-class SubscribeToCoinbaseSourceProvider @Inject()(
+class SubscribeToBitfinexFlowProvider @Inject()(
   config: AliConfiguration,
   implicit val ec: ExecutionContext,
   implicit val actorSystem: ActorSystem
-) extends Provider[Source[Message, Promise[Option[Message]]]] {
+) extends Provider[Flow[NotUsed, Message, NotUsed]] {
   
   val subscribePayload = s"""
     |{
-    |  "type": "subscribe",
-    |  "product_ids": [
-    |    "${config.LeftPair}-${config.RightPair}"
-    |  ],
-    |  "channels": [
-    |    "heartbeat",
-    |    "ticker"
-    |  ]
+    |   "event":"subscribe",
+    |   "channel":"ticker",
+    |   "pair":"${config.LeftPair}${config.RightPair}"
     |}
     """.stripMargin
 
-  val subscribeAndWaitSource = Source(List(TextMessage(subscribePayload))).concatMat(Source.maybe[Message])(Keep.right)
+  val subscribeFlow = Flow[NotUsed].map(_ => TextMessage(subscribePayload))
   
-  override def get(): Source[Message, Promise[Option[Message]]] = subscribeAndWaitSource
+  override def get(): Flow[NotUsed, Message, NotUsed] = subscribeFlow
   
 }
